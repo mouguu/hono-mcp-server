@@ -258,7 +258,12 @@ app.get("/", (c) => {
 });
 
 // MCP endpoint - Singleton transport (connect once)
-app.all("/mcp", async (c) => {
+app.get("/mcp", (c) => {
+  // Explicitly reject standalone SSE (GET) - we only support POST with direct responses
+  return c.text("Method Not Allowed: This server only supports POST for MCP requests", 405);
+});
+
+app.post("/mcp", async (c) => {
   if (!isConnected) {
     await mcpServer.connect(transport);
     isConnected = true;
