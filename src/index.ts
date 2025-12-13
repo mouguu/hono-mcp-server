@@ -12,14 +12,11 @@ async function fetchHonoDocs(url: string, cacheTtl = 3600): Promise<string> {
   const cache = caches.default;
   const cacheKey = new Request(url);
 
-  // Try cache first
   let response = await cache.match(cacheKey);
 
   if (!response) {
-    // Cache miss - fetch from origin
     response = await fetch(url);
     if (response.ok) {
-      // Clone and cache for future requests
       const cloned = response.clone();
       const headers = new Headers(cloned.headers);
       headers.set("Cache-Control", `public, max-age=${cacheTtl}`);
@@ -36,7 +33,7 @@ async function fetchHonoDocs(url: string, cacheTtl = 3600): Promise<string> {
 }
 
 // ============================================
-// Factory: Create MCP Server (stateless)
+// Create MCP Server (called once globally)
 // ============================================
 function createMcpServer(): McpServer {
   const server = new McpServer({
@@ -44,11 +41,7 @@ function createMcpServer(): McpServer {
     version: "1.0.0",
   });
 
-  // ============================================
-  // Register Tools
-  // ============================================
-
-  // Tool: Add two numbers
+  // Tool: Add
   server.tool(
     "add",
     "Add two numbers together",
@@ -59,17 +52,12 @@ function createMcpServer(): McpServer {
     async ({ a, b }) => {
       const result = a + b;
       return {
-        content: [
-          {
-            type: "text",
-            text: `${a} + ${b} = ${result}`,
-          },
-        ],
+        content: [{ type: "text", text: `${a} + ${b} = ${result}` }],
       };
     }
   );
 
-  // Tool: Multiply two numbers
+  // Tool: Multiply
   server.tool(
     "multiply",
     "Multiply two numbers together",
@@ -80,17 +68,12 @@ function createMcpServer(): McpServer {
     async ({ a, b }) => {
       const result = a * b;
       return {
-        content: [
-          {
-            type: "text",
-            text: `${a} × ${b} = ${result}`,
-          },
-        ],
+        content: [{ type: "text", text: `${a} × ${b} = ${result}` }],
       };
     }
   );
 
-  // Tool: Get current UTC time
+  // Tool: Get time
   server.tool(
     "get-time",
     "Get the current UTC time",
@@ -98,21 +81,12 @@ function createMcpServer(): McpServer {
     async () => {
       const now = new Date().toISOString();
       return {
-        content: [
-          {
-            type: "text",
-            text: `Current UTC time: ${now}`,
-          },
-        ],
+        content: [{ type: "text", text: `Current UTC time: ${now}` }],
       };
     }
   );
 
-  // ============================================
-  // Hono Documentation Tools (with caching)
-  // ============================================
-
-  // Tool: Search Hono docs (uses llms-full.txt with caching)
+  // Tool: Search Hono docs
   server.tool(
     "search-hono-docs",
     "Search Hono documentation for a query and return matching pages",
@@ -121,7 +95,6 @@ function createMcpServer(): McpServer {
       limit: z.number().optional().describe("Number of results to return (default 5)"),
     },
     async ({ query, limit = 5 }) => {
-      // Use llms-full.txt with caching to prevent timeout
       const text = await fetchHonoDocs("https://hono.dev/llms-full.txt");
       const lines = text.split("\n");
       const lowerQuery = query.toLowerCase();
@@ -141,28 +114,18 @@ function createMcpServer(): McpServer {
 
       if (results.length === 0) {
         return {
-          content: [
-            {
-              type: "text",
-              text: `No documentation results found for "${query}".`,
-            },
-          ],
+          content: [{ type: "text", text: `No documentation results found for "${query}".` }],
         };
       }
 
       const linesOut = results.map((r, idx) => `${idx + 1}. ${r.title} — ${r.url}`).join("\n");
       return {
-        content: [
-          {
-            type: "text",
-            text: linesOut,
-          },
-        ],
+        content: [{ type: "text", text: linesOut }],
       };
     }
   );
 
-  // Tool: Get Hono documentation page content (cached + paginated)
+  // Tool: Get Hono page (paginated)
   server.tool(
     "get-hono-page",
     "Fetch the Markdown content of a Hono documentation page (paginated for large docs)",
@@ -187,27 +150,17 @@ function createMcpServer(): McpServer {
         }
 
         return {
-          content: [
-            {
-              type: "text",
-              text,
-            },
-          ],
+          content: [{ type: "text", text }],
         };
       } catch (error) {
         return {
-          content: [
-            {
-              type: "text",
-              text: `Could not retrieve documentation for ${normalizedPath}. Error: ${error}`,
-            },
-          ],
+          content: [{ type: "text", text: `Could not retrieve documentation for ${normalizedPath}. Error: ${error}` }],
         };
       }
     }
   );
 
-  // Tool: List sections of a Hono documentation page (cached)
+  // Tool: List sections
   server.tool(
     "list-sections",
     "List the headings in a Hono documentation page",
@@ -236,12 +189,7 @@ function createMcpServer(): McpServer {
 
         if (sections.length === 0) {
           return {
-            content: [
-              {
-                type: "text",
-                text: `No sections found in ${normalizedPath}.`,
-              },
-            ],
+            content: [{ type: "text", text: `No sections found in ${normalizedPath}.` }],
           };
         }
 
@@ -253,30 +201,17 @@ function createMcpServer(): McpServer {
           .join("\n");
 
         return {
-          content: [
-            {
-              type: "text",
-              text: outputLines,
-            },
-          ],
+          content: [{ type: "text", text: outputLines }],
         };
       } catch (error) {
         return {
-          content: [
-            {
-              type: "text",
-              text: `Could not retrieve documentation for ${normalizedPath}. Error: ${error}`,
-            },
-          ],
+          content: [{ type: "text", text: `Could not retrieve documentation for ${normalizedPath}. Error: ${error}` }],
         };
       }
     }
   );
 
-  // ============================================
-  // Register Prompts
-  // ============================================
-
+  // Prompt: Greeting
   server.prompt(
     "greeting-template",
     "A simple greeting prompt template",
@@ -302,24 +237,32 @@ function createMcpServer(): McpServer {
 }
 
 // ============================================
+// Global singleton (Antigravity-friendly)
+// ============================================
+const mcpServer = createMcpServer();
+const transport = new StreamableHTTPTransport();
+let isConnected = false;
+
+// ============================================
 // Routes
 // ============================================
 
-// Health check endpoint
 app.get("/", (c) => {
   return c.json({
     name: "hono-mcp-server",
     version: "1.0.0",
     mcp_endpoint: "/mcp",
     status: "healthy",
+    mode: "singleton-transport",
   });
 });
 
-// MCP endpoint - TRUE STATELESS (new server per request)
+// MCP endpoint - Singleton transport (connect once)
 app.all("/mcp", async (c) => {
-  const server = createMcpServer();
-  const transport = new StreamableHTTPTransport();
-  await server.connect(transport);
+  if (!isConnected) {
+    await mcpServer.connect(transport);
+    isConnected = true;
+  }
   return transport.handleRequest(c);
 });
 

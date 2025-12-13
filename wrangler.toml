@@ -2,6 +2,15 @@ name = "hono-mcp-server"
 main = "src/index.ts"
 compatibility_date = "2025-12-13"
 
+# Observability settings
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
 # Uncomment to add environment variables
 # [vars]
 # API_KEY = "your-api-key"
