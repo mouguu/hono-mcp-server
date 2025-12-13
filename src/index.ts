@@ -162,24 +162,35 @@ function createMcpServer(): McpServer {
     }
   );
 
-  // Tool: Get Hono documentation page content (cached)
+  // Tool: Get Hono documentation page content (cached + paginated)
   server.tool(
     "get-hono-page",
-    "Fetch the Markdown content of a Hono documentation page",
+    "Fetch the Markdown content of a Hono documentation page (paginated for large docs)",
     {
       path: z.string().describe("Hono docs path starting with '/docs', e.g. '/docs/api/context'"),
+      offset: z.number().int().min(0).optional().describe("Character offset for pagination (default 0)"),
+      maxChars: z.number().int().min(1000).max(120000).optional().describe("Max characters to return (default 40000)"),
     },
-    async ({ path }) => {
+    async ({ path, offset = 0, maxChars = 40000 }) => {
       const normalizedPath = path.startsWith("/") ? path : `/${path}`;
       const githubUrl = `https://raw.githubusercontent.com/honojs/website/main${normalizedPath}.md`;
 
       try {
         const md = await fetchHonoDocs(githubUrl);
+        const totalChars = md.length;
+        const slice = md.slice(offset, offset + maxChars);
+        const nextOffset = offset + maxChars < totalChars ? offset + maxChars : null;
+
+        let text = slice;
+        if (nextOffset !== null) {
+          text += `\n\n--- Page truncated at ${offset + maxChars}/${totalChars} chars. Use offset=${nextOffset} to continue. ---`;
+        }
+
         return {
           content: [
             {
               type: "text",
-              text: md,
+              text,
             },
           ],
         };
