@@ -112,7 +112,7 @@ function createMcpServer(): McpServer {
   // Hono Documentation Tools (with caching)
   // ============================================
 
-  // Tool: Search Hono docs (uses smaller llms.txt by default)
+  // Tool: Search Hono docs (uses llms-full.txt with caching)
   server.tool(
     "search-hono-docs",
     "Search Hono documentation for a query and return matching pages",
@@ -121,8 +121,8 @@ function createMcpServer(): McpServer {
       limit: z.number().optional().describe("Number of results to return (default 5)"),
     },
     async ({ query, limit = 5 }) => {
-      // Use smaller llms.txt for faster response
-      const text = await fetchHonoDocs("https://hono.dev/llms.txt");
+      // Use llms-full.txt with caching to prevent timeout
+      const text = await fetchHonoDocs("https://hono.dev/llms-full.txt");
       const lines = text.split("\n");
       const lowerQuery = query.toLowerCase();
       const results: { title: string; path: string; url: string }[] = [];
