@@ -13,9 +13,6 @@ A production-ready [Model Context Protocol (MCP)](https://modelcontextprotocol.i
 
 | Tool               | Description                                |
 | ------------------ | ------------------------------------------ |
-| `add`              | Add two numbers together                   |
-| `multiply`         | Multiply two numbers together              |
-| `get-time`         | Get the current UTC time                   |
 | `search-hono-docs` | Search Hono documentation by keyword       |
 | `get-hono-page`    | Fetch Markdown content of a Hono docs page |
 | `list-sections`    | List headings in a Hono docs page          |
@@ -59,7 +56,7 @@ npx @modelcontextprotocol/inspector
 3. Try commands:
    - `list-tools`
    - `list-prompts`
-   - `call-tool add {"a": 5, "b": 3}`
+   - `call-tool search-hono-docs {"query": "middleware"}`
 
 ### Deploy to Cloudflare
 

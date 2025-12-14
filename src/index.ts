@@ -41,51 +41,6 @@ function createMcpServer(): McpServer {
     version: "1.0.0",
   });
 
-  // Tool: Add
-  server.tool(
-    "add",
-    "Add two numbers together",
-    {
-      a: z.number().describe("First number"),
-      b: z.number().describe("Second number"),
-    },
-    async ({ a, b }) => {
-      const result = a + b;
-      return {
-        content: [{ type: "text", text: `${a} + ${b} = ${result}` }],
-      };
-    }
-  );
-
-  // Tool: Multiply
-  server.tool(
-    "multiply",
-    "Multiply two numbers together",
-    {
-      a: z.number().describe("First number"),
-      b: z.number().describe("Second number"),
-    },
-    async ({ a, b }) => {
-      const result = a * b;
-      return {
-        content: [{ type: "text", text: `${a} × ${b} = ${result}` }],
-      };
-    }
-  );
-
-  // Tool: Get time
-  server.tool(
-    "get-time",
-    "Get the current UTC time",
-    {},
-    async () => {
-      const now = new Date().toISOString();
-      return {
-        content: [{ type: "text", text: `Current UTC time: ${now}` }],
-      };
-    }
-  );
-
   // Tool: Search Hono docs
   server.tool(
     "search-hono-docs",

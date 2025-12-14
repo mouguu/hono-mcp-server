@@ -1,6 +1,6 @@
 ========================================
 Hono MCP Server - Full Source Code
-Generated at: Sun Dec 14 02:30:26 EST 2025
+Generated at: Sun Dec 14 02:44:39 EST 2025
 ========================================
 
 
@@ -94,9 +94,6 @@ A production-ready [Model Context Protocol (MCP)](https://modelcontextprotocol.i
 
 | Tool               | Description                                |
 | ------------------ | ------------------------------------------ |
-| `add`              | Add two numbers together                   |
-| `multiply`         | Multiply two numbers together              |
-| `get-time`         | Get the current UTC time                   |
 | `search-hono-docs` | Search Hono documentation by keyword       |
 | `get-hono-page`    | Fetch Markdown content of a Hono docs page |
 | `list-sections`    | List headings in a Hono docs page          |
@@ -140,7 +137,7 @@ npx @modelcontextprotocol/inspector
 3. Try commands:
    - `list-tools`
    - `list-prompts`
-   - `call-tool add {"a": 5, "b": 3}`
+   - `call-tool search-hono-docs {"query": "middleware"}`
 
 ### Deploy to Cloudflare
 
@@ -288,51 +285,6 @@ function createMcpServer(): McpServer {
     name: "hono-mcp-server",
     version: "1.0.0",
   });
-
-  // Tool: Add
-  server.tool(
-    "add",
-    "Add two numbers together",
-    {
-      a: z.number().describe("First number"),
-      b: z.number().describe("Second number"),
-    },
-    async ({ a, b }) => {
-      const result = a + b;
-      return {
-        content: [{ type: "text", text: `${a} + ${b} = ${result}` }],
-      };
-    }
-  );
-
-  // Tool: Multiply
-  server.tool(
-    "multiply",
-    "Multiply two numbers together",
-    {
-      a: z.number().describe("First number"),
-      b: z.number().describe("Second number"),
-    },
-    async ({ a, b }) => {
-      const result = a * b;
-      return {
-        content: [{ type: "text", text: `${a} × ${b} = ${result}` }],
-      };
-    }
-  );
-
-  // Tool: Get time
-  server.tool(
-    "get-time",
-    "Get the current UTC time",
-    {},
-    async () => {
-      const now = new Date().toISOString();
-      return {
-        content: [{ type: "text", text: `Current UTC time: ${now}` }],
-      };
-    }
-  );
 
   // Tool: Search Hono docs
   server.tool(
