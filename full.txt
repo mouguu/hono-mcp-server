@@ -1,0 +1,527 @@
+========================================
+Hono MCP Server - Full Source Code
+Generated at: Sun Dec 14 02:30:26 EST 2025
+========================================
+
+
+========================================
+File: package.json
+========================================
+
+{
+  "name": "hono-mcp-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "echo \"Use MCP Inspector to test: npx @modelcontextprotocol/inspector\""
+  },
+  "dependencies": {
+    "hono": "^4.7.0",
+    "@hono/mcp": "^0.2.2",
+    "@modelcontextprotocol/sdk": "^1.12.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0",
+    "@cloudflare/workers-types": "^4.20241230.0",
+    "typescript": "^5.7.0"
+  }
+}
+
+
+========================================
+File: tsconfig.json
+========================================
+
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "lib": ["ESNext"],
+    "types": ["@cloudflare/workers-types"],
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+}
+
+
+========================================
+File: wrangler.toml
+========================================
+
+name = "hono-mcp-server"
+main = "src/index.ts"
+compatibility_date = "2025-12-13"
+
+# Observability settings
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+# Uncomment to add environment variables
+# [vars]
+# API_KEY = "your-api-key"
+
+
+========================================
+File: README.md
+========================================
+
+# Hono MCP Server
+
+A production-ready [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server built with [Hono](https://hono.dev/), deployable to Cloudflare Workers.
+
+## Features
+
+- 🚀 **Serverless** - Runs on Cloudflare Workers edge network
+- ⚡ **Fast** - Built on Hono, the ultrafast web framework
+- 🔧 **Extensible** - Easy to add custom tools and prompts
+- 🌐 **Universal** - Works with any MCP-compatible client
+
+## Included Tools
+
+| Tool               | Description                                |
+| ------------------ | ------------------------------------------ |
+| `add`              | Add two numbers together                   |
+| `multiply`         | Multiply two numbers together              |
+| `get-time`         | Get the current UTC time                   |
+| `search-hono-docs` | Search Hono documentation by keyword       |
+| `get-hono-page`    | Fetch Markdown content of a Hono docs page |
+| `list-sections`    | List headings in a Hono docs page          |
+
+## Included Prompts
+
+| Prompt              | Description                       |
+| ------------------- | --------------------------------- |
+| `greeting-template` | A simple greeting prompt template |
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm or bun
+- Cloudflare account (for deployment)
+
+### Installation
+
+```bash
+npm install
+```
+
+### Local Development
+
+```bash
+npm run dev
+```
+
+The server will start at `http://localhost:8787`
+
+### Testing with MCP Inspector
+
+```bash
+npx @modelcontextprotocol/inspector
+```
+
+1. Select **Streamable HTTP** transport
+2. Enter URL: `http://localhost:8787/mcp`
+3. Try commands:
+   - `list-tools`
+   - `list-prompts`
+   - `call-tool add {"a": 5, "b": 3}`
+
+### Deploy to Cloudflare
+
+```bash
+npm run deploy
+```
+
+Your server will be available at `https://hono-mcp-server.<your-subdomain>.workers.dev/mcp`
+
+## Client Configuration
+
+### Cursor
+
+```json
+{
+  "mcpServers": {
+    "hono-mcp": {
+      "url": "https://hono-mcp-server.<your-subdomain>.workers.dev/mcp"
+    }
+  }
+}
+```
+
+### Windsurf
+
+```json
+{
+  "mcpServers": {
+    "hono-mcp": {
+      "serverUrl": "https://hono-mcp-server.<your-subdomain>.workers.dev/mcp"
+    }
+  }
+}
+```
+
+### Claude Desktop
+
+```json
+{
+  "mcpServers": {
+    "hono-mcp": {
+      "transport": "streamable-http",
+      "url": "https://hono-mcp-server.<your-subdomain>.workers.dev/mcp"
+    }
+  }
+}
+```
+
+## Adding Custom Tools
+
+Edit `src/index.ts` and add new tools:
+
+```typescript
+mcpServer.tool(
+  "my-tool", // Tool name
+  "Tool description", // Description
+  {
+    param1: z.string().describe("Parameter description"),
+  },
+  async ({ param1 }) => {
+    // Your tool logic here
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Result: ${param1}`,
+        },
+      ],
+    };
+  }
+);
+```
+
+## Project Structure
+
+```
+├── src/
+│   └── index.ts        # Main MCP server
+├── package.json        # Dependencies
+├── wrangler.toml       # Cloudflare config
+├── tsconfig.json       # TypeScript config
+└── README.md           # This file
+```
+
+## License
+
+MIT
+
+
+========================================
+File: .gitignore
+========================================
+
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+*.log
+.DS_Store
+
+
+========================================
+File: src/index.ts
+========================================
+
+import { Hono } from "hono";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPTransport } from "@hono/mcp";
+import { z } from "zod";
+
+const app = new Hono();
+
+// ============================================
+// Helper: Cached fetch for Hono docs
+// ============================================
+async function fetchHonoDocs(url: string, cacheTtl = 3600): Promise<string> {
+  const cache = caches.default;
+  const cacheKey = new Request(url);
+
+  let response = await cache.match(cacheKey);
+
+  if (!response) {
+    response = await fetch(url);
+    if (response.ok) {
+      const cloned = response.clone();
+      const headers = new Headers(cloned.headers);
+      headers.set("Cache-Control", `public, max-age=${cacheTtl}`);
+      const cachedResponse = new Response(cloned.body, {
+        status: cloned.status,
+        statusText: cloned.statusText,
+        headers,
+      });
+      await cache.put(cacheKey, cachedResponse);
+    }
+  }
+
+  return response.text();
+}
+
+// ============================================
+// Create MCP Server (called once globally)
+// ============================================
+function createMcpServer(): McpServer {
+  const server = new McpServer({
+    name: "hono-mcp-server",
+    version: "1.0.0",
+  });
+
+  // Tool: Add
+  server.tool(
+    "add",
+    "Add two numbers together",
+    {
+      a: z.number().describe("First number"),
+      b: z.number().describe("Second number"),
+    },
+    async ({ a, b }) => {
+      const result = a + b;
+      return {
+        content: [{ type: "text", text: `${a} + ${b} = ${result}` }],
+      };
+    }
+  );
+
+  // Tool: Multiply
+  server.tool(
+    "multiply",
+    "Multiply two numbers together",
+    {
+      a: z.number().describe("First number"),
+      b: z.number().describe("Second number"),
+    },
+    async ({ a, b }) => {
+      const result = a * b;
+      return {
+        content: [{ type: "text", text: `${a} × ${b} = ${result}` }],
+      };
+    }
+  );
+
+  // Tool: Get time
+  server.tool(
+    "get-time",
+    "Get the current UTC time",
+    {},
+    async () => {
+      const now = new Date().toISOString();
+      return {
+        content: [{ type: "text", text: `Current UTC time: ${now}` }],
+      };
+    }
+  );
+
+  // Tool: Search Hono docs
+  server.tool(
+    "search-hono-docs",
+    "Search Hono documentation for a query and return matching pages",
+    {
+      query: z.string().describe("Search query for Hono docs"),
+      limit: z.number().optional().describe("Number of results to return (default 5)"),
+    },
+    async ({ query, limit = 5 }) => {
+      const text = await fetchHonoDocs("https://hono.dev/llms-full.txt");
+      const lines = text.split("\n");
+      const lowerQuery = query.toLowerCase();
+      const results: { title: string; path: string; url: string }[] = [];
+
+      for (const line of lines) {
+        if (results.length >= limit) break;
+        if (line.toLowerCase().includes(lowerQuery)) {
+          const match = line.match(/\((\/docs[^)]+)\)/);
+          if (match) {
+            const path = match[1];
+            const url = `https://hono.dev${path}`;
+            results.push({ title: line.trim(), path, url });
+          }
+        }
+      }
+
+      if (results.length === 0) {
+        return {
+          content: [{ type: "text", text: `No documentation results found for "${query}".` }],
+        };
+      }
+
+      const linesOut = results.map((r, idx) => `${idx + 1}. ${r.title} — ${r.url}`).join("\n");
+      return {
+        content: [{ type: "text", text: linesOut }],
+      };
+    }
+  );
+
+  // Tool: Get Hono page (paginated)
+  server.tool(
+    "get-hono-page",
+    "Fetch the Markdown content of a Hono documentation page (paginated for large docs)",
+    {
+      path: z.string().describe("Hono docs path starting with '/docs', e.g. '/docs/api/context'"),
+      offset: z.number().int().min(0).optional().describe("Character offset for pagination (default 0)"),
+      maxChars: z.number().int().min(1000).max(120000).optional().describe("Max characters to return (default 40000)"),
+    },
+    async ({ path, offset = 0, maxChars = 40000 }) => {
+      const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+      const githubUrl = `https://raw.githubusercontent.com/honojs/website/main${normalizedPath}.md`;
+
+      try {
+        const md = await fetchHonoDocs(githubUrl);
+        const totalChars = md.length;
+        const slice = md.slice(offset, offset + maxChars);
+        const nextOffset = offset + maxChars < totalChars ? offset + maxChars : null;
+
+        let text = slice;
+        if (nextOffset !== null) {
+          text += `\n\n--- Page truncated at ${offset + maxChars}/${totalChars} chars. Use offset=${nextOffset} to continue. ---`;
+        }
+
+        return {
+          content: [{ type: "text", text }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: `Could not retrieve documentation for ${normalizedPath}. Error: ${error}` }],
+        };
+      }
+    }
+  );
+
+  // Tool: List sections
+  server.tool(
+    "list-sections",
+    "List the headings in a Hono documentation page",
+    {
+      path: z.string().describe("Hono docs path starting with '/docs', e.g. '/docs/api/context'"),
+    },
+    async ({ path }) => {
+      const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+      const githubUrl = `https://raw.githubusercontent.com/honojs/website/main${normalizedPath}.md`;
+
+      try {
+        const md = await fetchHonoDocs(githubUrl);
+        const lines = md.split("\n");
+        const sections: { level: number; title: string; anchor: string }[] = [];
+
+        for (const line of lines) {
+          const match = line.match(/^(#{2,6})\s+(.+)/);
+          if (match) {
+            const hashes = match[1];
+            const title = match[2].trim();
+            const level = hashes.length;
+            const slug = title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
+            sections.push({ level, title, anchor: `#${slug}` });
+          }
+        }
+
+        if (sections.length === 0) {
+          return {
+            content: [{ type: "text", text: `No sections found in ${normalizedPath}.` }],
+          };
+        }
+
+        const outputLines = sections
+          .map((sec) => {
+            const indent = "  ".repeat(sec.level - 2);
+            return `${indent}- ${sec.title} (${sec.anchor})`;
+          })
+          .join("\n");
+
+        return {
+          content: [{ type: "text", text: outputLines }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: `Could not retrieve documentation for ${normalizedPath}. Error: ${error}` }],
+        };
+      }
+    }
+  );
+
+  // Prompt: Greeting
+  server.prompt(
+    "greeting-template",
+    "A simple greeting prompt template",
+    {
+      name: z.string().describe("Name to greet"),
+    },
+    async ({ name }) => {
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please greet ${name} in a friendly and professional manner.`,
+            },
+          },
+        ],
+      };
+    }
+  );
+
+  return server;
+}
+
+// ============================================
+// Global singleton (Antigravity-friendly)
+// ============================================
+const mcpServer = createMcpServer();
+const transport = new StreamableHTTPTransport();
+let isConnected = false;
+
+// ============================================
+// Routes
+// ============================================
+
+app.get("/", (c) => {
+  return c.json({
+    name: "hono-mcp-server",
+    version: "1.0.0",
+    mcp_endpoint: "/mcp",
+    status: "healthy",
+    mode: "singleton-transport",
+  });
+});
+
+// MCP endpoint - Singleton transport (connect once)
+app.get("/mcp", (c) => {
+  // Explicitly reject standalone SSE (GET) - we only support POST with direct responses
+  return c.text("Method Not Allowed: This server only supports POST for MCP requests", 405);
+});
+
+app.post("/mcp", async (c) => {
+  if (!isConnected) {
+    await mcpServer.connect(transport);
+    isConnected = true;
+  }
+  return transport.handleRequest(c);
+});
+
+export default app;
+
+
+========================================
+End of Full Source Code
+========================================
